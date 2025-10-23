@@ -1,0 +1,200 @@
+"""
+NEFLStocks.com Founder-Led Companies Scraper
+Extracts S&P 500 founder-led company data from neflstocks.com
+"""
+
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+import pandas as pd
+import time
+import json
+from datetime import datetime
+
+class NEFLStocksScraper:
+    def __init__(self, headless=True):
+        """Initialize the scraper with Chrome driver"""
+        self.url = "https://neflstocks.com"
+        self.driver = None
+        self.headless = headless
+        
+    def setup_driver(self):
+        """Configure and start Chrome WebDriver"""
+        chrome_options = Options()
+        
+        if self.headless:
+            chrome_options.add_argument("--headless")
+        
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--window-size=1920,1080")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        chrome_options.add_experimental_option('useAutomationExtension', False)
+        
+        self.driver = webdriver.Chrome(options=chrome_options)
+        print("✓ Chrome driver initialized")
+        
+    def scrape_companies(self):
+        """Scrape founder-led companies from neflstocks.com"""
+        try:
+            print(f"Loading {self.url}...")
+            self.driver.get(self.url)
+            
+            # Wait for Streamlit app to load (adjust wait time as needed)
+            print("Waiting for page to load...")
+            time.sleep(5)  # Initial wait for Streamlit
+            
+            # Wait for data table or specific elements to appear
+            # You'll need to inspect the page and adjust these selectors
+            wait = WebDriverWait(self.driver, 20)
+            
+            # Common Streamlit table selectors - adjust based on actual site
+            possible_selectors = [
+                "table",
+                "[data-testid='stDataFrame']",
+                ".dataframe",
+                "[data-testid='stTable']",
+                "div[data-testid='stDataFrameResizable']"
+            ]
+            
+            table = None
+            for selector in possible_selectors:
+                try:
+                    table = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+                    print(f"✓ Found table using selector: {selector}")
+                    break
+                except:
+                    continue
+            
+            if not table:
+                print("⚠ Could not find table. Trying to extract all text...")
+                page_text = self.driver.find_element(By.TAG_NAME, "body").text
+                print("Page content preview:")
+                print(page_text[:500])
+                return None
+            
+            # Extract table data
+            companies = []
+            
+            # Try to find table rows
+            rows = table.find_elements(By.TAG_NAME, "tr")
+            print(f"✓ Found {len(rows)} rows")
+            
+            # Extract headers
+            headers = []
+            header_row = rows[0] if rows else None
+            if header_row:
+                header_cells = header_row.find_elements(By.TAG_NAME, "th")
+                if not header_cells:
+                    header_cells = header_row.find_elements(By.TAG_NAME, "td")
+                headers = [cell.text.strip() for cell in header_cells]
+                print(f"✓ Headers: {headers}")
+            
+            # Extract data rows
+            for row in rows[1:]:  # Skip header row
+                cells = row.find_elements(By.TAG_NAME, "td")
+                if cells:
+                    row_data = [cell.text.strip() for cell in cells]
+                    if row_data and any(row_data):  # Skip empty rows
+                        company_dict = dict(zip(headers, row_data)) if headers else {f"col_{i}": val for i, val in enumerate(row_data)}
+                        companies.append(company_dict)
+            
+            print(f"✓ Extracted {len(companies)} companies")
+            return companies
+            
+        except Exception as e:
+            print(f"✗ Error during scraping: {str(e)}")
+            # Save screenshot for debugging
+            self.driver.save_screenshot("error_screenshot.png")
+            print("✓ Saved error screenshot as 'error_screenshot.png'")
+            return None
+    
+    def save_to_csv(self, companies, filename=None):
+        """Save scraped data to CSV"""
+        if not companies:
+            print("⚠ No data to save")
+            return
+        
+        if filename is None:
+            filename = f"founder_led_companies_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        
+        df = pd.DataFrame(companies)
+        df.to_csv(filename, index=False)
+        print(f"✓ Saved {len(companies)} companies to {filename}")
+        return filename
+    
+    def save_to_json(self, companies, filename=None):
+        """Save scraped data to JSON"""
+        if not companies:
+            print("⚠ No data to save")
+            return
+        
+        if filename is None:
+            filename = f"founder_led_companies_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        
+        with open(filename, 'w') as f:
+            json.dump({
+                'scraped_at': datetime.now().isoformat(),
+                'total_companies': len(companies),
+                'companies': companies
+            }, f, indent=2)
+        
+        print(f"✓ Saved {len(companies)} companies to {filename}")
+        return filename
+    
+    def close(self):
+        """Clean up and close the driver"""
+        if self.driver:
+            self.driver.quit()
+            print("✓ Browser closed")
+
+
+def main():
+    """Main execution function"""
+    print("=" * 60)
+    print("NEFLStocks.com Founder-Led Companies Scraper")
+    print("=" * 60)
+    
+    # Initialize scraper
+    scraper = NEFLStocksScraper(headless=False)  # Set to True for production
+    
+    try:
+        # Setup browser
+        scraper.setup_driver()
+        
+        # Scrape data
+        companies = scraper.scrape_companies()
+        
+        if companies:
+            print("\n" + "=" * 60)
+            print("SAMPLE DATA (first 3 companies):")
+            print("=" * 60)
+            for i, company in enumerate(companies[:3], 1):
+                print(f"\n{i}. {company}")
+            
+            # Save to files
+            print("\n" + "=" * 60)
+            print("SAVING DATA:")
+            print("=" * 60)
+            scraper.save_to_csv(companies)
+            scraper.save_to_json(companies)
+            
+            print("\n" + "=" * 60)
+            print(f"✓ SUCCESS! Scraped {len(companies)} founder-led companies")
+            print("=" * 60)
+        else:
+            print("\n✗ No data scraped. Check error screenshot for debugging.")
+    
+    except Exception as e:
+        print(f"\n✗ Fatal error: {str(e)}")
+    
+    finally:
+        scraper.close()
+
+
+if __name__ == "__main__":
+    main()
