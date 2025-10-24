@@ -3,34 +3,3 @@ uvicorn[standard]==0.24.0
 yfinance==0.2.31
 pandas==2.1.3
 pydantic==2.5.0
-```
-3. Click **File → Save As**
-4. In "File name" type: `requirements.txt`
-5. **Important:** In "Save as type" dropdown, select **"All Files (*.*)"** 
-6. Save it in the same folder where your `main.py` file is
-
-**On Mac:**
-1. Open **TextEdit**
-2. Go to **Format → Make Plain Text** (very important!)
-3. Copy and paste the content above
-4. Click **File → Save**
-5. Name it: `requirements.txt`
-6. Save it in the same folder as your `main.py`
-
----
-
-**Option 2: Using Command Line (Easier!)**
-
-**On Windows (Command Prompt):**
-1. Open Command Prompt
-2. Navigate to your project folder:
-```
-cd C:\Users\money\OneDrive\Desktop\your-project-folder
-```
-3. Create the file:
-```
-echo fastapi==0.104.1 > requirements.txt
-echo uvicorn[standard]==0.24.0 >> requirements.txt
-echo yfinance==0.2.31 >> requirements.txt
-echo pandas==2.1.3 >> requirements.txt
-echo pydantic==2.5.0 >> requirements.txt
