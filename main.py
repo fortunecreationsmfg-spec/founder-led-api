@@ -1,4 +1,11 @@
-<!DOCTYPE html>
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+
+app = FastAPI()
+
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    return """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -67,6 +74,7 @@
         function App() {
             const [companies, setCompanies] = useState([]);
             const [topTwenty, setTopTwenty] = useState([]);
+            const [topSeven, setTopSeven] = useState([]);
             const [inverseCramer, setInverseCramer] = useState(null);
             const [selectedTab, setSelectedTab] = useState(0);
             const [loading, setLoading] = useState(true);
@@ -95,6 +103,16 @@
                     const response = await fetch(`${API_BASE_URL}/top-twenty`);
                     const data = await response.json();
                     setTopTwenty(data);
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            };
+
+            const fetchTopSeven = async () => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/top-seven`);
+                    const data = await response.json();
+                    setTopSeven(data);
                 } catch (error) {
                     console.error('Error:', error);
                 }
